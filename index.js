@@ -1,52 +1,61 @@
 const fs = require('fs');
 
-// Helper function to decode values
-const decodeValue = (value, base) => parseInt(value, base);
-
-// Lagrange Interpolation to find the constant term c
-const lagrangeInterpolation = (points) => {
-  let c = 0;
-
-  for (let i = 0; i < points.length; i++) {
-    let { x: xi, y: yi } = points[i];
-    
-    // Basis polynomial
-    let Li = 1;
-    for (let j = 0; j < points.length; j++) {
-      if (i !== j) {
-        let { x: xj } = points[j];
-        Li *= xj / (xj - xi);
-      }
+fs.readFile('input.json', 'utf8', (err, data) => {
+    if (err) {
+        console.error('Error reading the file:', err);
+        return;
     }
 
-    // Aggregate for y coefficients
-    c += yi * Li;
-  }
+    const testCase = JSON.parse(data);
 
-  return c;
-};
+    // Function to decode the base-encoded values
+    const decodeValue = (value, base) => {
+        return parseInt(value, base);
+    };
 
-// Main function to process the JSON input and find 'c'
-const findConstantTerm = (jsonFilePath) => {
-  const data = fs.readFileSync(jsonFilePath);
-  const input = JSON.parse(data);
+    // Extracting keys n and k
+    const n = testCase.keys.n;
+    const k = testCase.keys.k;
 
-  const n = input.keys.n;
-  const k = input.keys.k;
+    // Prepare arrays to store the x and y values
+    const points = [];
 
-  const points = Object.keys(input)
-    .filter(key => key !== 'keys')
-    .map(key => {
-      const { base, value } = input[key];
-      return {
-        x: parseInt(key),
-        y: decodeValue(value, base)
-      };
+    // Collect the points (x, y) from the JSON
+    Object.keys(testCase).forEach(key => {
+        if (key !== "keys") {
+            const base = parseInt(testCase[key].base, 10); 
+            const value = testCase[key].value;
+            const decodedValue = decodeValue(value, base);
+            const x = parseInt(key, 10);  // The key serves as x
+            points.push({ x: x, y: decodedValue });
+        }
     });
 
-  const c = lagrangeInterpolation(points);
-  console.log('The constant term c is:', c);
-};
+    // Log the points for verification
+    console.log('Decoded points (x, y):', points);
 
-// Run the function with the given JSON file path
-findConstantTerm('input.json');
+    // Function to apply Lagrange Interpolation to find the constant term c (f(0))
+    const lagrangeInterpolation = (points) => {
+        let result = 0;
+
+        for (let i = 0; i < points.length; i++) {
+            let term = points[i].y;
+
+            for (let j = 0; j < points.length; j++) {
+                if (i !== j) {
+                    term *= (0 - points[j].x) / (points[i].x - points[j].x);
+                }
+            }
+
+            result += term;
+        }
+
+        return result;
+    };
+
+    // Solve for the constant term c using Lagrange Interpolation
+    const constantTermC = lagrangeInterpolation(points.slice(0, k));
+
+    // Output the constant term c
+    console.log('The constant term c of the polynomial is:', constantTermC);
+});
